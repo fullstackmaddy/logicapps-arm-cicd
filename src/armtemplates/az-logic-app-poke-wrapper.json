@@ -1,0 +1,820 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "logicAppLocation": {
+            "type": "string",
+            "allowedValues" : [
+                "centralindia",
+                "southindia"
+            ]
+
+        },
+        "logicAppName": {
+            "type": "string",
+            "minLength": 1
+        }
+       
+    },
+    "variables": {
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2019-05-01",
+            "name": "[parameters('logicAppName')]",
+            "location": "[parameters('logicAppLocation')]",
+            "tags": {
+                "Project": "Global Integration BootCamp 2k21",
+                "Resource": "Logic App"
+            },
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "triggers": {
+                        "manual": {
+                            "type": "Request",
+                            "kind": "Http",
+                            "inputs": {
+                                "schema": {
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "name"
+                                    ],
+                                    "type": "object"
+                                }
+                            },
+                            "operationOptions": "EnableSchemaValidation"
+                        }
+                    },
+                    "actions": {
+                        "Initialize_variable": {
+                            "runAfter": {},
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "arrayAbilities",
+                                        "type": "array"
+                                    }
+                                ]
+                            }
+                        },
+                        "Scope": {
+                            "actions": {
+                                "Compose": {
+                                    "runAfter": {
+                                        "For_each": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Compose",
+                                    "inputs": {
+                                        "abilities": "@variables('arrayAbilities')",
+                                        "name": "@triggerBody()?['name']",
+                                        "species": "@body('Parse_JSON')?['species']?['name']"
+                                    }
+                                },
+                                "For_each": {
+                                    "foreach": "@body('Parse_JSON')?['abilities']",
+                                    "actions": {
+                                        "Append_to_array_variable": {
+                                            "runAfter": {},
+                                            "type": "AppendToArrayVariable",
+                                            "inputs": {
+                                                "name": "arrayAbilities",
+                                                "value": "@items('For_each')?['ability']?['name']"
+                                            }
+                                        }
+                                    },
+                                    "runAfter": {
+                                        "Parse_JSON": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Foreach"
+                                },
+                                "HTTP": {
+                                    "runAfter": {},
+                                    "type": "Http",
+                                    "inputs": {
+                                        "method": "GET",
+                                        "uri": "https://pokeapi.co/api/v2/pokemon/@{toLower(triggerBody()?['name'])}"
+                                    }
+                                },
+                                "Parse_JSON": {
+                                    "runAfter": {
+                                        "HTTP": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "ParseJson",
+                                    "inputs": {
+                                        "content": "@body('HTTP')",
+                                        "schema": {
+                                            "properties": {
+                                                "abilities": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "ability": {
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "url": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            },
+                                                            "is_hidden": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "slot": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "ability",
+                                                            "is_hidden",
+                                                            "slot"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                "base_experience": {
+                                                    "type": "integer"
+                                                },
+                                                "forms": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "url": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "url"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                "game_indices": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "game_index": {
+                                                                "type": "integer"
+                                                            },
+                                                            "version": {
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "url": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "game_index",
+                                                            "version"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                "height": {
+                                                    "type": "integer"
+                                                },
+                                                "held_items": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "item": {
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "url": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            },
+                                                            "version_details": {
+                                                                "items": {
+                                                                    "properties": {
+                                                                        "rarity": {
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "version": {
+                                                                            "properties": {
+                                                                                "name": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "url": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "rarity",
+                                                                        "version"
+                                                                    ],
+                                                                    "type": "object"
+                                                                },
+                                                                "type": "array"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "item",
+                                                            "version_details"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "is_default": {
+                                                    "type": "boolean"
+                                                },
+                                                "location_area_encounters": {
+                                                    "type": "string"
+                                                },
+                                                "moves": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "move": {
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "url": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            },
+                                                            "version_group_details": {
+                                                                "items": {
+                                                                    "properties": {
+                                                                        "level_learned_at": {
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "move_learn_method": {
+                                                                            "properties": {
+                                                                                "name": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "url": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "version_group": {
+                                                                            "properties": {
+                                                                                "name": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "url": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "level_learned_at",
+                                                                        "move_learn_method",
+                                                                        "version_group"
+                                                                    ],
+                                                                    "type": "object"
+                                                                },
+                                                                "type": "array"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "move",
+                                                            "version_group_details"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "order": {
+                                                    "type": "integer"
+                                                },
+                                                "species": {
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "url": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "sprites": {
+                                                    "properties": {
+                                                        "back_default": {
+                                                            "type": "string"
+                                                        },
+                                                        "back_female": {},
+                                                        "back_shiny": {
+                                                            "type": "string"
+                                                        },
+                                                        "back_shiny_female": {},
+                                                        "front_default": {
+                                                            "type": "string"
+                                                        },
+                                                        "front_female": {},
+                                                        "front_shiny": {
+                                                            "type": "string"
+                                                        },
+                                                        "front_shiny_female": {},
+                                                        "other": {
+                                                            "properties": {
+                                                                "dream_world": {
+                                                                    "properties": {
+                                                                        "front_default": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "front_female": {}
+                                                                    },
+                                                                    "type": "object"
+                                                                },
+                                                                "official-artwork": {
+                                                                    "properties": {
+                                                                        "front_default": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        },
+                                                        "versions": {
+                                                            "properties": {
+                                                                "generation-i": {
+                                                                    "properties": {
+                                                                        "red-blue": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_gray": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_gray": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "yellow": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_gray": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_gray": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                },
+                                                                "generation-ii": {
+                                                                    "properties": {
+                                                                        "crystal": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "gold": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "silver": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                },
+                                                                "generation-iii": {
+                                                                    "properties": {
+                                                                        "emerald": {
+                                                                            "properties": {
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "firered-leafgreen": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "ruby-sapphire": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                },
+                                                                "generation-iv": {
+                                                                    "properties": {
+                                                                        "diamond-pearl": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_female": {},
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny_female": {},
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {},
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "heartgold-soulsilver": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_female": {},
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny_female": {},
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {},
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "platinum": {
+                                                                            "properties": {
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_female": {},
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny_female": {},
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {},
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                },
+                                                                "generation-v": {
+                                                                    "properties": {
+                                                                        "black-white": {
+                                                                            "properties": {
+                                                                                "animated": {
+                                                                                    "properties": {
+                                                                                        "back_default": {
+                                                                                            "type": "string"
+                                                                                        },
+                                                                                        "back_female": {},
+                                                                                        "back_shiny": {
+                                                                                            "type": "string"
+                                                                                        },
+                                                                                        "back_shiny_female": {},
+                                                                                        "front_default": {
+                                                                                            "type": "string"
+                                                                                        },
+                                                                                        "front_female": {},
+                                                                                        "front_shiny": {
+                                                                                            "type": "string"
+                                                                                        },
+                                                                                        "front_shiny_female": {}
+                                                                                    },
+                                                                                    "type": "object"
+                                                                                },
+                                                                                "back_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_female": {},
+                                                                                "back_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "back_shiny_female": {},
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {},
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                },
+                                                                "generation-vi": {
+                                                                    "properties": {
+                                                                        "omegaruby-alphasapphire": {
+                                                                            "properties": {
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {},
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "x-y": {
+                                                                            "properties": {
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {},
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                },
+                                                                "generation-vii": {
+                                                                    "properties": {
+                                                                        "icons": {
+                                                                            "properties": {
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        },
+                                                                        "ultra-sun-ultra-moon": {
+                                                                            "properties": {
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {},
+                                                                                "front_shiny": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_shiny_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                },
+                                                                "generation-viii": {
+                                                                    "properties": {
+                                                                        "icons": {
+                                                                            "properties": {
+                                                                                "front_default": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "front_female": {}
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "stats": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "base_stat": {
+                                                                "type": "integer"
+                                                            },
+                                                            "effort": {
+                                                                "type": "integer"
+                                                            },
+                                                            "stat": {
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "url": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "base_stat",
+                                                            "effort",
+                                                            "stat"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                "types": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "slot": {
+                                                                "type": "integer"
+                                                            },
+                                                            "type": {
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "url": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "slot",
+                                                            "type"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                },
+                                                "weight": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "Response": {
+                                    "runAfter": {
+                                        "Compose": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Response",
+                                    "kind": "Http",
+                                    "inputs": {
+                                        "body": "@outputs('Compose')",
+                                        "headers": {
+                                            "Content-Type": "application/json"
+                                        },
+                                        "statusCode": 200
+                                    }
+                                }
+                            },
+                            "runAfter": {
+                                "Initialize_variable": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Scope"
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {}
+            }
+        }
+    ],
+    "outputs": {
+        "logicAppUrl": {
+            "type": "string",
+            "value": "[listCallbackURL(concat(resourceId('Microsoft.Logic/workflows/', parameters('logicAppName')), '/triggers/manual'), '2019-05-01').value]"
+        }
+    }
+}
