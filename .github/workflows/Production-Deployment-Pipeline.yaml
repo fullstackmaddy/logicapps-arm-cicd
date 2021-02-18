@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - '.github/**'
+      - .github/**
 
 env:
   RESOURCEGROUP: az-gibc-2k21-prod
