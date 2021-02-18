@@ -1,0 +1,47 @@
+name: Production-Deloyment-Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '.github/**'
+
+env:
+  RESOURCEGROUP: az-gibc-2k21-prod
+  RESOURCEGROUPLOCATION: centralindia
+  LOGICAPPNAME: az-logic-app-poke-wrapper
+  ARMTEMPLATELOCATION : ./src/armtemplates/az-logic-app-poke-wrapper.json
+  PARAMETERSFILELOCATION: ./src/armtemplates/az-logic-app-poke-wrapper.parameters.json
+
+jobs:
+  deploy-to-production:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Log In To Azure
+        uses: Azure/login@v1
+        with:
+          creds: ${{secrets.AZURE_CREDENTIALS}}
+      
+      - name: Validate Deployment
+        shell: bash
+        run: |
+         az deployment group validate \
+         --resource-group ${{env.RESOURCEGROUP}} \
+         --mode Incremental \
+         --template-file ${{env.ARMTEMPLATELOCATION}} \
+         --parameters ${{env.PARAMETERSFILELOCATION}}
+      - name: Deploy Logic App
+        shell: bash
+        run: |
+          az deployment group create \
+          -g ${{env.RESOURCEGROUP}} \
+          --template-file ${{env.ARMTEMPLATELOCATION}} \
+          --parameters ${{env.PARAMETERSFILELOCATION}}
+          
+      - name: Log Out From Azure
+        run: az logout

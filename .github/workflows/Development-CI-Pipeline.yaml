@@ -1,0 +1,148 @@
+name: Development-CI-Pipeline
+
+on: 
+  push:
+    branches:
+      - dev*
+
+env:
+  RESOURCEGROUP: az-gibc-2k21-dev
+  RESOURCEGROUPLOCATION: centralindia
+  LOGICAPPNAME: az-logic-app-poke-wrapper
+  ARMTEMPLATELOCATION : ./src/armtemplates/az-logic-app-poke-wrapper.json
+  PARAMETERSFILELOCATION: ./src/armtemplates/az-logic-app-poke-wrapper.parameters.json
+  POSTMANCOLLECTIONLOCATION: ./src/testassets/gibc2k21-logicapps-cicd.postman_collection.json
+  POSTMANENVIRONMENTFILELOCATION : ./src/testassets/gibc2k21-logicapps-cicd-env.postman_environment.json
+
+jobs:
+  
+  #Check if the arm template follows the recommendations
+  quality-check-arm-template:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        
+      - name : Perform ARM Template Tests
+        id: armtemplatetests
+        uses: aliencube/arm-ttk-actions@v0.3
+        with:
+          path: ./src/armtemplates/az-logic-app-poke-wrapper.json
+          skips: '"Template Should Not Contain Blanks", "Outputs Must Not Contain Secrets", "ResourceIds should not contain"'
+              
+      - name: Create Directory For Results
+        run: mkdir -p armttkresults
+
+      - name: Create Test Results JSON
+        run: echo '${{ toJSON(fromJSON(steps.armtemplatetests.outputs.results))}}' > armttkresults/Results_ArmTTK.json
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v2
+        with:
+          name: Results_ArmTTK_Report
+          path: armttkresults
+      
+      - name: Exit if ARM Tests failed
+        if: contains(toJson(fromJSON(steps.armtemplatetests.outputs.results).*.Passed), 'false')
+        run: exit 1
+  
+  run-integration-tests:
+    needs: quality-check-arm-template
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      
+      - name: Log In To Azure
+        uses: Azure/login@v1
+        with:
+          creds: ${{secrets.AZURE_CREDENTIALS}}
+      
+      - name: Create Resource Group
+        run: az group create -n ${{env.RESOURCEGROUP}} -l ${{env.RESOURCEGROUPLOCATION}}
+
+      - name: Validate Deployment
+        shell: bash
+        run: |
+         az deployment group validate \
+         --resource-group ${{env.RESOURCEGROUP}} \
+         --mode Incremental \
+         --template-file ${{env.ARMTEMPLATELOCATION}} \
+         --parameters ${{env.PARAMETERSFILELOCATION}}
+
+      - name: Deploy Logic App
+        shell: bash
+        run: |
+          echo "LOGICAPPURL=$(az deployment group create \
+          -g ${{env.RESOURCEGROUP}} \
+          --template-file ${{env.ARMTEMPLATELOCATION}} \
+          --parameters ${{env.PARAMETERSFILELOCATION}} \
+          --query 'properties.outputs.logicAppUrl.value' -o tsv)" >> $GITHUB_ENV
+          
+      - name: Log Out From Azure
+        run: az logout
+      
+      - name: Install node
+        uses: actions/setup-node@v2.1.4
+        with:
+          node-version: '12.x'
+      
+      - name: Install Newman
+        shell: bash
+        run: |
+          npm install -g newman
+          npm install -g newman-reporter-htmlextra
+
+      - name: Make Directory for results
+        run: mkdir -p testResults
+      
+      - name: Run Post Collection
+        shell: bash
+        run: |
+          newman run ${{env.POSTMANCOLLECTIONLOCATION}} -e ${{env.POSTMANENVIRONMENTFILELOCATION}} --env-var "url=${{env.LOGICAPPURL}}" \
+          -r htmlextra --reporter-htmlextra-export testResults/htmlreport.html \
+          --reporter-htmlextra-darkTheme  > testResults/runreport1.html
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v2
+        with: 
+          name: RunReports
+          path: testResults
+  
+  clean-up-resource-group:
+    needs: run-integration-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log In To Azure
+        uses: Azure/login@v1
+        with:
+          creds: ${{secrets.AZURE_CREDENTIALS}}
+
+      - name: Delete Resource group
+        run: |
+          az group delete --name ${{env.RESOURCEGROUP}} --yes
+
+      - name: Logout From Azure
+        shell: bash
+        run: az logout
+
+  create-pull-request:
+    needs: clean-up-resource-group
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Create a Pull request
+        uses: repo-sync/pull-request@v2
+        with: 
+          destination_branch: "main"                      
+          pr_title: "Pulling ${{ github.ref }} into master" 
+          pr_body: ":robot: *Integration bot raised the PR*"
+          pr_reviewer: "fullstackmaddy"                         
+          pr_assignee: "fullstackmaddy"                 
+          pr_label: "autopr"                              
+          pr_draft: false                                  
+          pr_allow_empty: false                            
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
