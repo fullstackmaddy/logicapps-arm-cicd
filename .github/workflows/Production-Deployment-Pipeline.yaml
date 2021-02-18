@@ -1,4 +1,4 @@
-name: Production-Deloyment-Pipeline
+name: Production-Delpoyment-Pipeline
 
 on:
   push:
