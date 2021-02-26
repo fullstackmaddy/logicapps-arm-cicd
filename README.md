@@ -3,4 +3,3 @@ This repository contains the demo code to implement the continuous integration a
 ![Production-Deployment-Pipeline](https://github.com/fullstackmaddy/logicapps-arm-cicd/workflows/Production-Deployment-Pipeline/badge.svg)
 ![Development-CI-Pipeline](https://github.com/fullstackmaddy/logicapps-arm-cicd/workflows/Development-CI-Pipeline/badge.svg)
 ![GitHub](https://img.shields.io/github/license/fullstackmaddy/logicapps-arm-cicd)
-
