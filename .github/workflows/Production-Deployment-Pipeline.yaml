@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - src/**
-   
 
 env:
   RESOURCEGROUP: az-gibc-2k21-prod
